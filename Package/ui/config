@@ -1,0 +1,19 @@
+{
+  ".url": {
+    "SYNO.SDS._ThirdParty.App.StorJ.Storagenode": {
+      "itemType": 0,
+      "type": "legacy",
+      "allUsers": true,
+      "title": "Storagenode",
+      "desc": "Storagenode",
+      "icon": "images/Storagenode_{0}.png",
+      "url": "/webman/3rdparty/StorJ/config.php",
+      "allowMultiInstance": false,
+      "configablePrivilege": true,
+      "advanceGrantPrivilege": false,
+      "grantPrivilege": "all",
+      "width": 0,
+      "height": 0
+    }
+  }
+}

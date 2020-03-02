@@ -1,0 +1,33 @@
+#!/bin/sh
+rm -f /usr/syno/share/nginx/conf.d/dsm.$SYNOPKG_PKGNAME.conf
+sudo synoservicecfg --reload nginx
+# -----------------------------------------------------------
+#  StorJ logic adapted from WD
+# -----------------------------------------------------------
+PKGNAME="StorJ"
+LOGFILE="/var/log/$PKGNAME"
+
+echo `date` "Starting StorJ removal " >> $LOGFILE
+echo `date` "Running script $0 with $# args: $* " >> $LOGFILE
+
+# -----------------------------------------------------------
+# Cleanup docker containers and images
+# -----------------------------------------------------------
+BASE_IMAGE="storjlabs/storagenode:beta"
+REGISTRY=""
+IMAGE="$BASE_IMAGE"
+
+CID=$(docker ps -a | grep $IMAGE | awk '{print $1}')
+for im in $CID
+do
+    NAME=`docker inspect --format '{{.Name}}' $im | sed "s/\///g"`
+    echo `date` "Killing : Container($im) (name:$NAME) ">> $LOG
+    docker stop $NAME
+    docker rm -f $NAME
+done
+echo `date` "Removing : (image:$IMAGE) ">> $LOG
+docker rmi $IMAGE
+
+# -----------------------------------------------------------
+# -----------------------------------------------------------
+exit 0

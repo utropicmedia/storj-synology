@@ -1,0 +1,82 @@
+#!/bin/sh
+LOG="/var/log/$SYNOPKG_PKGNAME"
+echo `date` $SYNOPKG_PKGNAME "V"$SYNOPKG_PKGVER "is post-installing" >> $LOG
+#STARTNODE="/volume1/@appstore/StorJ/scripts/storagenodestart.sh"
+#STOPNODE= "/volume1/@appstore/StorJ/scripts/storagenodestop.sh"
+
+
+WEBPATH="$SYNOPKG_PKGDEST/ui"
+CONFIG_FILE="$SYNOPKG_PKGDEST/ui/output.csv"
+ERRLOG="$LOG"_ERR
+rm -f "$ERRLOG"
+
+#close the streams and redirect them to a custom or standard Syno Log
+exec 1<&-
+exec 2<&-
+exec 1>>$LOG
+exec 2>>$ERRLOG
+
+path=$1
+
+echo `date` "Granting access on log files for the webserver"
+chmod o+w $LOG
+chmod o+w $ERRLOG
+
+chown -R http "$SYNOPKG_PKGDEST/ui"
+chmod 666 /volume1/@appstore/StorJ/ui/config.json
+chown admin /volume1/@appstore/StorJ/scripts/*.sh
+chmod  a+rx /volume1/@appstore/StorJ/scripts/*.sh
+chmod  u+s /volume1/@appstore/StorJ/scripts/*.sh
+#chmod 777 "$STARTNODE"
+#chmod 777 "$STOPNODE"
+
+# set the name of the package in the nginx config and router.cgi
+sed -i -e "s|@MODS_CGI@|$SYNOPKG_PKGNAME|g" "$SYNOPKG_PKGDEST/ui/dsm.cgi.conf"
+sed -i -e "s|@SYNOPKG_PKGNAME@|$SYNOPKG_PKGNAME|g" "$SYNOPKG_PKGDEST/ui/router.cgi"
+
+# link the nginx config to redirect pages accessed on admin port
+rm -f /usr/syno/share/nginx/conf.d/dsm.$SYNOPKG_PKGNAME.conf
+ln -s $SYNOPKG_PKGDEST/ui/dsm.cgi.conf /usr/syno/share/nginx/conf.d/dsm.$SYNOPKG_PKGNAME.conf
+
+#restating nginx is done via package's dependencies (instuninst_restart_services)
+#sudo synoservicecfg --reload nginx
+
+#Updating the crontable for autoupdate
+
+SJCRON="/tmp/sjcrontable"
+fetchCron() {
+    rm -f $SJCRON
+    # Fetch required crontab (Update user for fetch if required)
+    cp /etc/crontab $SJCRON
+}
+addEntryToCronTable() {
+    # Update entry into crontab contents
+    grep -Fq "$1" ${SJCRON} || echo "$1" >> ${SJCRON}
+}
+updateCron() {
+    # Update to required crontab (Update user if required)
+    cp /etc/crontab /etc/crontab.bak
+    mv $SJCRON /etc/crontab.bak
+}
+
+# Setup CRON Tab entry
+fetchCron
+addEntryToCronTable "5 0 * * * ${WEBPATH}/scripts/storagenodeupdate.sh ${CONFIG_FILE} "
+updateCron
+# Restart cron service 
+synoservice -restart crond
+
+
+
+if [ -s "$ERRLOG" ]; then
+  echo `date` "----------------------------------------------------"
+  cat $ERRLOG
+  echo `date` "----------------------------------------------------"
+  # Add infor to the log to be displayed by the Catalog Manager
+  echo `date` "Adding info to the  POST INSTALL log file"
+  sed -i 's/$/<br>/' "$ERRLOG"
+  cat $ERRLOG >> $SYNOPKG_TEMP_LOGFILE
+  exit 1
+fi
+
+exit 0

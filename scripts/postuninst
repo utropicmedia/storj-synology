@@ -1,0 +1,72 @@
+#!/bin/sh
+
+# -----------------------------------------------------------
+#  StorJ logic adapted from WD
+# -----------------------------------------------------------
+PKGNAME="StorJ"
+LOGFILE="/var/log/$PKGNAME"
+WEBPATH="$SYNOPKG_PKGDEST/ui"
+CONFIG_FILE="$SYNOPKG_PKGDEST/ui/output.csv"
+INSTALL_DIR=/volume1/@appstore/StorJ
+
+echo `date` "Starting StorJ removal " >> $LOGFILE
+echo `date` "Running script $0 with $# args: $* " >> $LOGFILE
+
+
+rm -rf $WEBPATH
+rm -rf $INSTALL_DIR
+
+# -----------------------------------------------------------
+# Cleanup cron entries
+# -----------------------------------------------------------
+SJCRON=`mktemp`
+NEWCRON=`mktemp`
+CRONBAK='/tmp/sj_cron.bak'
+
+dumpEntries() {
+    echo "$1 (first 3 entries and last entries) ====> " >> $LOGFILE
+    cat $1 | head -3 >> $LOGFILE
+    echo "................" >> $LOGFILE
+    cat $1 | tail -3 >> $LOGFILE
+}
+
+fetchCron() {
+    rm -f $SJCRON
+    # Fetch required crontab (Update user for fetch if required)
+    cp /etc/crontab $SJCRON
+    echo `date` "Fetched crontab to temp $SJCRON  " >> $LOGFILE
+    dumpEntries $SJCRON
+}
+removeEntryFromCronTable() {
+    # Update entry into crontab contents
+    cmd="cat $SJCRON | grep -e -v \"$1\" > $NEWCRON"
+    cat $SJCRON | grep -v -e "$1" > $NEWCRON
+    echo $cmd >> LOGFILE
+    echo `date` " updated cron being installed through  $NEWCRON " >> $LOGFILE
+}
+
+updateCron() {
+    # Update to required crontab (Update user if required)
+    dumpEntries $NEWCRON
+    if [[ -s $NEWCRON ]]
+    then
+	    echo `date` "Setting crontab through $SJCRON " >> $LOGFILE
+	    #mv /etc/crontab /etc/crontab.bak
+	    mv $NEWCRON /etc/crontab
+    fi
+    # Save old cron 
+    mv $SJCRON $CRONBAK   
+    echo `date` "OLD cron is saved at  $CRONBAK " >> $LOGFILE
+    #rm -f $NEWCRON
+}
+
+
+# Update CRON Tab entry
+fetchCron
+removeEntryFromCronTable "5 0.*${WEBPATH}/scripts/storagenodeupdate.sh /var/www/storj/scripts/config.json"
+updateCron
+# Restart cron service 
+synoservice -restart crond
+
+
+exit 0

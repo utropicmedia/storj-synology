@@ -1,0 +1,35 @@
+version: '2'
+services:
+#---------------------------------------------------------------------------
+#  Details of STORJ storage node container
+#---------------------------------------------------------------------------
+#    ${DOCKER} run -d --restart unless-stopped -p 28967:28967 -p 127.0.0.1:14002:14002 -e WALLET="$2" -e EMAIL="$3" -e ADDRESS="68.55.169.100:28967" -e BANDWIDTH="${4}TB" -e STORAGE="${5}TB" --mount type=bind,source="/share/Public/identity/storagenode/",destination=/app/identity --mount type=bind,source="/share/CACHEDEV1_DATA/storj/",destination=/app/config --name ${QPKG_NAME} storjlabs/storagenode:beta
+    storj:
+        image: storjlabs/storagenode:latest
+        restart: unless-stopped
+        hostname: storjnode
+        container_name: ${QPKG_NAME}
+        ports:
+          - "28967:28967"
+          - "14002:14002"
+#        depends_on:
+#          - mariadb
+#        links:
+#          - mariadb
+        volumes:
+          - type: bind
+            source: "/share/Public/identity/storagenode/"
+            destination: /app/identity
+          - type: bind
+            source: "/share/CACHEDEV1_DATA/storj/"
+            destination: /app/config
+        environment:
+        - WALLET="${WALLET}"
+        - EMAIL="${EMAIL}"
+        - ADDRESS="${ADDRESS}"
+        - BANDWIDTH="${BANDWIDTH}TB"
+        - STORAGE="${STORAGE}TB"
+        networks:
+          - storj
+networks:
+    storj:
